@@ -19,10 +19,24 @@ fn main() {
 
     println!("Songs Loaded");
     let index = create_index(songs).expect("Failed to index");
+    // let query = "beraham duao se nafrat karunga";
+    let query = "beraham";
+    let songs = search(&index, query);
 
-    let songs = search(&index, "beraham duao se nafrat karunga");
+    println!("{:?}", songs);
 
-    println!("{:?}", songs)
+    println!("===============================================");
+    let mut ranked_songs: Vec<(usize, &Song)> = songs
+        .iter()
+        .map(|song| (song.lyrics.matches(query).count(), song))
+        .collect();
+
+    // Sort by frequency descending (b compares to a)
+    ranked_songs.sort_by(|a, b| b.0.cmp(&a.0));
+
+    for (count, song) in ranked_songs {
+        println!("Frequency: {}, Song: {}", count, song.title);
+    }
 }
 
 fn load_songs(path: String) -> Result<Vec<Song>, Box<dyn std::error::Error>> {
