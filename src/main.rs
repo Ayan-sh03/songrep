@@ -208,4 +208,186 @@ mod tests {
 
         fs::remove_dir_all(test_dir).unwrap();
     }
+
+    #[test]
+    fn test_extract_between_normal() {
+        assert_eq!(
+            extract_between("prefix#_#Song Title#_#suffix"),
+            Some("Song Title")
+        );
+    }
+
+    #[test]
+    fn test_extract_between_missing_delimiter() {
+        assert_eq!(extract_between("prefix suffix"), None);
+    }
+
+    #[test]
+    fn test_extract_between_only_one_delimiter() {
+        assert_eq!(extract_between("prefix#_#suffix"), None);
+    }
+
+    #[test]
+    fn test_extract_between_multiple_delimiters() {
+        assert_eq!(
+            extract_between("a#_#b#_#c#_#d"),
+            Some("b")
+        );
+    }
+
+    #[test]
+    fn test_normalize_basic() {
+        assert_eq!(normalize("Hello"), "hello");
+    }
+
+    #[test]
+    fn test_normalize_with_punctuation() {
+        assert_eq!(normalize("Hello, World!"), "helloworld");
+    }
+
+    #[test]
+    fn test_normalize_with_spaces() {
+        assert_eq!(normalize("  hello  "), "hello");
+    }
+
+    #[test]
+    fn test_normalize_with_mixed_case() {
+        assert_eq!(normalize("HeLLo WoRLD"), "helloworld");
+    }
+
+    #[test]
+    fn test_normalize_with_numbers() {
+        assert_eq!(normalize("Hello123"), "hello123");
+    }
+
+    #[test]
+    fn test_normalize_empty() {
+        assert_eq!(normalize(""), "");
+    }
+
+    #[test]
+    fn test_create_index_basic() {
+        let songs = vec![
+            Song {
+                id: 0,
+                title: "Test Song".to_string(),
+                lyrics: "hello world\nhello again".to_string(),
+            },
+        ];
+        let index = create_index(songs).unwrap();
+
+        assert!(!index.exact.is_empty());
+        assert!(index.exact.contains_key("hello"));
+        assert!(index.exact.contains_key("world"));
+    }
+
+    #[test]
+    fn test_create_index_empty_songs() {
+        let songs: Vec<Song> = vec![];
+        let index = create_index(songs).unwrap();
+
+        assert!(index.exact.is_empty());
+        assert!(index.songs.is_empty());
+    }
+
+    #[test]
+    fn test_create_index_word_positions() {
+        let songs = vec![
+            Song {
+                id: 0,
+                title: "Test".to_string(),
+                lyrics: "hello world hello".to_string(),
+            },
+        ];
+        let index = create_index(songs).unwrap();
+
+        let hello_hits = index.exact.get("hello");
+        assert!(hello_hits.is_some());
+        assert_eq!(hello_hits.unwrap().len(), 2);
+    }
+
+    #[test]
+    fn test_search_single_word() {
+        let songs = vec![
+            Song {
+                id: 0,
+                title: "Song A".to_string(),
+                lyrics: "hello world".to_string(),
+            },
+            Song {
+                id: 1,
+                title: "Song B".to_string(),
+                lyrics: "goodbye world".to_string(),
+            },
+        ];
+        let index = create_index(songs).unwrap();
+        let results = search(&index, "world");
+
+        assert_eq!(results.len(), 2);
+    }
+
+    #[test]
+    fn test_search_multiple_words_and() {
+        let songs = vec![
+            Song {
+                id: 0,
+                title: "Song A".to_string(),
+                lyrics: "hello beautiful world".to_string(),
+            },
+            Song {
+                id: 1,
+                title: "Song B".to_string(),
+                lyrics: "hello world".to_string(),
+            },
+        ];
+        let index = create_index(songs).unwrap();
+        let results = search(&index, "hello world");
+
+        assert_eq!(results.len(), 2);
+    }
+
+    #[test]
+    fn test_search_no_results() {
+        let songs = vec![
+            Song {
+                id: 0,
+                title: "Song A".to_string(),
+                lyrics: "hello world".to_string(),
+            },
+        ];
+        let index = create_index(songs).unwrap();
+        let results = search(&index, "nonexistent");
+
+        assert_eq!(results.len(), 0);
+    }
+
+    #[test]
+    fn test_search_empty_query() {
+        let songs = vec![
+            Song {
+                id: 0,
+                title: "Song A".to_string(),
+                lyrics: "hello world".to_string(),
+            },
+        ];
+        let index = create_index(songs).unwrap();
+        let results = search(&index, "");
+
+        assert_eq!(results.len(), 0);
+    }
+
+    #[test]
+    fn test_search_case_insensitive() {
+        let songs = vec![
+            Song {
+                id: 0,
+                title: "Song A".to_string(),
+                lyrics: "Hello World".to_string(),
+            },
+        ];
+        let index = create_index(songs).unwrap();
+        let results = search(&index, "HELLO");
+
+        assert_eq!(results.len(), 1);
+    }
 }
