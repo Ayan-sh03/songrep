@@ -20,7 +20,7 @@ fn main() {
     println!("Songs Loaded");
     let index = create_index(songs).expect("Failed to index");
     // let query = "beraham duao se nafrat karunga";
-    let query = "beraham";
+    let query = "Poem";
     let songs = search(&index, query);
 
     println!("{:?}", songs);
@@ -80,8 +80,8 @@ fn create_index(songs: Vec<Song>) -> Result<Index, Box<dyn std::error::Error>> {
     let mut exact: HashMap<String, Vec<(u32, usize, usize)>> = HashMap::new();
     for entry in &songs {
         // split song lyrics in line number and words
-        let lyrics = entry.lyrics.clone();
-        let lines: Vec<&str> = lyrics.split('\n').collect();
+        let title_with_lyrics = format!("{} {} \n", entry.title, entry.lyrics);
+        let lines: Vec<&str> = title_with_lyrics.split('\n').collect();
 
         // println!("{}", lines.len());
         // // println!("{}", lines)
@@ -92,7 +92,7 @@ fn create_index(songs: Vec<Song>) -> Result<Index, Box<dyn std::error::Error>> {
             for (word_index, word) in words.iter().enumerate() {
                 let entry = (entry.id, index, word_index);
                 exact
-                    .entry(word.to_string())
+                    .entry(word.to_lowercase())
                     .or_insert(Vec::new())
                     .push(entry)
             }
