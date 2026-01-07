@@ -1,5 +1,5 @@
+use std::cmp::max;
 use std::{collections::HashMap, fs};
-
 #[derive(Debug, Clone)]
 struct Song {
     id: u32,
@@ -171,6 +171,16 @@ fn search(index: &Index, query: &str) -> Vec<Song> {
     results
 }
 
+fn levenshtein(str1: &str, str2: &str) -> usize {
+    if str1.is_empty() || str2.is_empty() {
+        return max(0, max(str1.len(), str2.len()));
+    }
+    if str1 == str2 {
+        return 0;
+    }
+    return 0;
+}
+
 fn extract_between(s: &str) -> Option<&str> {
     let parts: Vec<&str> = s.split("#_#").collect();
     if parts.len() >= 3 {
@@ -229,10 +239,7 @@ mod tests {
 
     #[test]
     fn test_extract_between_multiple_delimiters() {
-        assert_eq!(
-            extract_between("a#_#b#_#c#_#d"),
-            Some("b")
-        );
+        assert_eq!(extract_between("a#_#b#_#c#_#d"), Some("b"));
     }
 
     #[test]
@@ -267,13 +274,11 @@ mod tests {
 
     #[test]
     fn test_create_index_basic() {
-        let songs = vec![
-            Song {
-                id: 0,
-                title: "Test Song".to_string(),
-                lyrics: "hello world\nhello again".to_string(),
-            },
-        ];
+        let songs = vec![Song {
+            id: 0,
+            title: "Test Song".to_string(),
+            lyrics: "hello world\nhello again".to_string(),
+        }];
         let index = create_index(songs).unwrap();
 
         assert!(!index.exact.is_empty());
@@ -292,13 +297,11 @@ mod tests {
 
     #[test]
     fn test_create_index_word_positions() {
-        let songs = vec![
-            Song {
-                id: 0,
-                title: "Test".to_string(),
-                lyrics: "hello world hello".to_string(),
-            },
-        ];
+        let songs = vec![Song {
+            id: 0,
+            title: "Test".to_string(),
+            lyrics: "hello world hello".to_string(),
+        }];
         let index = create_index(songs).unwrap();
 
         let hello_hits = index.exact.get("hello");
@@ -348,13 +351,11 @@ mod tests {
 
     #[test]
     fn test_search_no_results() {
-        let songs = vec![
-            Song {
-                id: 0,
-                title: "Song A".to_string(),
-                lyrics: "hello world".to_string(),
-            },
-        ];
+        let songs = vec![Song {
+            id: 0,
+            title: "Song A".to_string(),
+            lyrics: "hello world".to_string(),
+        }];
         let index = create_index(songs).unwrap();
         let results = search(&index, "nonexistent");
 
@@ -363,13 +364,11 @@ mod tests {
 
     #[test]
     fn test_search_empty_query() {
-        let songs = vec![
-            Song {
-                id: 0,
-                title: "Song A".to_string(),
-                lyrics: "hello world".to_string(),
-            },
-        ];
+        let songs = vec![Song {
+            id: 0,
+            title: "Song A".to_string(),
+            lyrics: "hello world".to_string(),
+        }];
         let index = create_index(songs).unwrap();
         let results = search(&index, "");
 
@@ -378,16 +377,26 @@ mod tests {
 
     #[test]
     fn test_search_case_insensitive() {
-        let songs = vec![
-            Song {
-                id: 0,
-                title: "Song A".to_string(),
-                lyrics: "Hello World".to_string(),
-            },
-        ];
+        let songs = vec![Song {
+            id: 0,
+            title: "Song A".to_string(),
+            lyrics: "Hello World".to_string(),
+        }];
         let index = create_index(songs).unwrap();
         let results = search(&index, "HELLO");
 
         assert_eq!(results.len(), 1);
+    }
+
+    #[test]
+    fn test_identical() {
+        assert_eq!(levenshtein("tum", "tum"), 0);
+        assert_eq!(levenshtein("", ""), 0);
+    }
+
+    #[test]
+    fn test_empty() {
+        assert_eq!(levenshtein("", "tum"), 3);
+        assert_eq!(levenshtein("pyaar", ""), 5);
     }
 }
