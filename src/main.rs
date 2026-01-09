@@ -1,4 +1,4 @@
-use std::cmp::max;
+use std::cmp::{max,min};
 use std::{collections::HashMap, fs};
 #[derive(Debug, Clone)]
 struct Song {
@@ -175,10 +175,45 @@ fn levenshtein(str1: &str, str2: &str) -> usize {
     if str1.is_empty() || str2.is_empty() {
         return max(0, max(str1.len(), str2.len()));
     }
+    let s1: Vec<char> = str1.chars().collect();
+    let s2: Vec<char> = str2.chars().collect();
     if str1 == str2 {
         return 0;
     }
-    return 0;
+
+    let rows =str1.len()+1;
+    let cols = str2.len()+1 ;
+
+    // let mut diff = Vec<Vec<usize>>::new();
+
+    // create matrix of length str+1 and str1+1
+    // next at 0 row and 0 col , fil with what it would take to convert ""->empty string into that char, it would be 1 eidt
+    // so fill it with indexes , next traverse from whole matrix , where zeroth of string is 1 in matrix
+
+
+    let mut diff = vec![vec![0;cols];rows];
+
+    diff[0][0] = 0;
+    for i in 1..cols{
+        diff[0][i] = i;
+    }
+
+    for i in 1..rows{
+        diff[i][0] = i;
+    }
+
+    for i in 1..rows{
+        for j in 1..cols{
+            if s1[i-1] == s2[j-1]{
+                diff[i][j] = diff[i-1][j-1];
+            }
+            else if s1[i-1] != s2[j-1]{
+                diff[i][j] =  min(diff[i-1][j-1],min(diff[i-1][j],diff[i][j-1])) + 1;
+            }
+        }
+    }
+
+    return diff[rows-1][cols-1];
 }
 
 fn extract_between(s: &str) -> Option<&str> {
@@ -398,5 +433,19 @@ mod tests {
     fn test_empty() {
         assert_eq!(levenshtein("", "tum"), 3);
         assert_eq!(levenshtein("pyaar", ""), 5);
+    }
+
+    #[test]
+    fn test_one_edit() {
+	    assert_eq!(levenshtein("tum", "tuum"), 1);  // insert
+	    assert_eq!(levenshtein("tum", "tu"), 1);    // delete
+	    assert_eq!(levenshtein("tum", "tun"), 1);   // replace
+	}
+
+	#[test]
+    fn test_multiple_edits() {
+        assert_eq!(levenshtein("pyaar", "piyar"), 2);
+        assert_eq!(levenshtein("abc", "xyz"), 3);
+        assert_eq!(levenshtein("kitten", "sitting"), 3);
     }
 }
