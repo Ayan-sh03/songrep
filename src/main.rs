@@ -1,4 +1,4 @@
-use std::cmp::{max,min};
+use std::cmp::{max, min};
 use std::{collections::HashMap, fs};
 #[derive(Debug, Clone)]
 struct Song {
@@ -20,7 +20,8 @@ fn main() {
     println!("Songs Loaded");
     let index = create_index(songs).expect("Failed to index");
     // let query = "beraham duao se nafrat karunga";
-    let query = "Poem";
+    let query = "tiri ankhon ki namaken";
+    // let query = "Poem";
     let songs = search(&index, query);
 
     println!("{:?}", songs);
@@ -121,15 +122,36 @@ fn search(index: &Index, query: &str) -> Vec<Song> {
 
         // Extract unique IDs for the current word
         let hits = index.exact.get(&norm);
-        let ids: Vec<u32> = hits
-            .map(|hits| {
-                let mut unique_ids: Vec<u32> = hits.iter().map(|(id, _, _)| *id).collect();
-                unique_ids.sort();
-                unique_ids.dedup();
-                unique_ids
-            })
+
+        // if hits are empty , then check with levenshtein
+        // go acrsoo all the keys and hit with min edit distance 1 , that is tuum->tum
+
+        let mut ids: Vec<u32> = index
+            .exact
+            .get(&norm)
+            .map(|hits| hits.iter().map(|(id, _, _)| *id).collect())
             .unwrap_or_default();
 
+        // 2. ALWAYS check for fuzzy matches (even if exact exists)
+        // or only if exact hits are low
+        if ids.len() < 5 {
+            // Example: if we found few or no exact matches
+            for indexed_word in index.exact.keys() {
+                if (indexed_word.len() as i32 - norm.len() as i32).abs() <= 2 {
+                    let dist = levenshtein(&norm, indexed_word);
+                    // distance 1 catches ankhon -> aankhon
+                    if dist <= 1 {
+                        if let Some(hits) = index.exact.get(indexed_word) {
+                            for (id, _, _) in hits {
+                                ids.push(*id);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        ids.sort();
+        ids.dedup();
         println!("📖 Word: '{}' -> Found in {} unique songs", norm, ids.len());
 
         song_ids = match song_ids {
@@ -173,7 +195,7 @@ fn search(index: &Index, query: &str) -> Vec<Song> {
 
 fn levenshtein(str1: &str, str2: &str) -> usize {
     if str1.is_empty() || str2.is_empty() {
-        return max(0, max(str1.len(), str2.len()));
+        return std::cmp::max(str1.chars().count(), str2.chars().count());
     }
     let s1: Vec<char> = str1.chars().collect();
     let s2: Vec<char> = str2.chars().collect();
@@ -181,8 +203,8 @@ fn levenshtein(str1: &str, str2: &str) -> usize {
         return 0;
     }
 
-    let rows =str1.len()+1;
-    let cols = str2.len()+1 ;
+    let rows = s1.len() + 1;
+    let cols = s2.len() + 1;
 
     // let mut diff = Vec<Vec<usize>>::new();
 
@@ -190,30 +212,28 @@ fn levenshtein(str1: &str, str2: &str) -> usize {
     // next at 0 row and 0 col , fil with what it would take to convert ""->empty string into that char, it would be 1 eidt
     // so fill it with indexes , next traverse from whole matrix , where zeroth of string is 1 in matrix
 
-
-    let mut diff = vec![vec![0;cols];rows];
+    let mut diff = vec![vec![0; cols]; rows];
 
     diff[0][0] = 0;
-    for i in 1..cols{
+    for i in 1..cols {
         diff[0][i] = i;
     }
 
-    for i in 1..rows{
+    for i in 1..rows {
         diff[i][0] = i;
     }
 
-    for i in 1..rows{
-        for j in 1..cols{
-            if s1[i-1] == s2[j-1]{
-                diff[i][j] = diff[i-1][j-1];
-            }
-            else if s1[i-1] != s2[j-1]{
-                diff[i][j] =  min(diff[i-1][j-1],min(diff[i-1][j],diff[i][j-1])) + 1;
+    for i in 1..rows {
+        for j in 1..cols {
+            if s1[i - 1] == s2[j - 1] {
+                diff[i][j] = diff[i - 1][j - 1];
+            } else if s1[i - 1] != s2[j - 1] {
+                diff[i][j] = min(diff[i - 1][j - 1], min(diff[i - 1][j], diff[i][j - 1])) + 1;
             }
         }
     }
 
-    return diff[rows-1][cols-1];
+    return diff[rows - 1][cols - 1];
 }
 
 fn extract_between(s: &str) -> Option<&str> {
@@ -437,12 +457,12 @@ mod tests {
 
     #[test]
     fn test_one_edit() {
-	    assert_eq!(levenshtein("tum", "tuum"), 1);  // insert
-	    assert_eq!(levenshtein("tum", "tu"), 1);    // delete
-	    assert_eq!(levenshtein("tum", "tun"), 1);   // replace
-	}
+        assert_eq!(levenshtein("tum", "tuum"), 1); // insert
+        assert_eq!(levenshtein("tum", "tu"), 1); // delete
+        assert_eq!(levenshtein("tum", "tun"), 1); // replace
+    }
 
-	#[test]
+    #[test]
     fn test_multiple_edits() {
         assert_eq!(levenshtein("pyaar", "piyar"), 2);
         assert_eq!(levenshtein("abc", "xyz"), 3);
